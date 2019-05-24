@@ -75,6 +75,7 @@ const checkCourse = (subj, crsenum) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
     if (!isNaN(response.data.substring(8702, 8704)) && !spotOpened) {
+      console.log(`${Number(response.data.substring(8702, 8704))} out of 60`);
       if (Number(response.data.substring(8702, 8704)) < 60) {
         console.log('Opening!');
         console.log(Number(response.data.substring(8702, 8704)));
@@ -89,7 +90,7 @@ const checkCourse = (subj, crsenum) => {
       }
     }
     if (!spotOpened) {
-      setTimeout(() => { return checkCourse('COSC', '30'); }, 1000);
+      setTimeout(() => { return checkCourse('COSC', '30'); }, 30000);
     }
   }).catch((error) => {
     console.log(error.message);
