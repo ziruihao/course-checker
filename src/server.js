@@ -72,7 +72,9 @@ const checkCourse = (subj, crsenum) => {
       if (Number(response.data.substring(8702, 8704)) < 60) {
         console.log('Opening!');
         // console.log(Number(response.data.substring(8702, 8704)));
-        axios.post(`${ENGINE_URL}`, { spotOpened: true });
+        axios.post(`${ENGINE_URL}`, { spotOpened: true }).then((result) => {
+          console.log(`engine said it ${result.data}`);
+        });
         client.messages
           .create({
             body: `A slot has opened for ${subj} ${crsenum}!`,
@@ -82,7 +84,9 @@ const checkCourse = (subj, crsenum) => {
           .then((message) => { return console.log(message.sid); });
       }
     }
-    axios.post(`${ENGINE_URL}`, { spotOpened: false });
+    axios.post(`${ENGINE_URL}`, { spotOpened: false }).then((result) => {
+      console.log(`engine said it ${result.data}`);
+    });
   }).catch((error) => {
     console.log(error.message);
   });
