@@ -5,6 +5,9 @@ import path from 'path';
 import morgan from 'morgan';
 import axios from 'axios';
 import $ from 'jquery';
+import dotenv from 'dotenv';
+
+dotenv.config({ silent: true });
 
 // initialize
 const app = express();
@@ -58,8 +61,8 @@ console.log(`listening on: ${port}`);
 // Download the helper library from https://www.twilio.com/docs/node/install
 // Your Account Sid and Auth Token from twilio.com/console
 // DANGER! This is insecure. See http://twil.io/secure
-const accountSid = 'AC5a45cbbe881a50587dcf107cdfb6ee33';
-const authToken = '31f9e3efce328eab967cc0db6567d4ec';
+const accountSid = process.env.accountSid;
+const authToken = process.env.authToken;
 const client = require('twilio')(accountSid, authToken);
 
 let spotOpened = false;
