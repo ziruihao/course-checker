@@ -18,13 +18,17 @@
     "yarn": "^1.6.0"
   },
   "dependencies": {
+    "axios": "^0.18.0",
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.7.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
-    "morgan": "^1.9.1"
+    "form-data": "^2.3.3",
+    "jquery": "^3.4.1",
+    "morgan": "^1.9.1",
+    "twilio": "^3.31.0"
   },
   "devDependencies": {
     "babel-eslint": "^10.0.1",
