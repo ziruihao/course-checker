@@ -6,7 +6,7 @@ import cors from 'cors';
 import path from 'path';
 import morgan from 'morgan';
 import axios from 'axios';
-import $ from 'jquery';
+// import $ from 'jquery';
 import dotenv from 'dotenv';
 
 dotenv.config({ silent: true });
@@ -40,15 +40,8 @@ app.get('/', (req, res) => {
   res.send('hi');
 });
 
-// stopper route
-app.get('/stop', (req, res) => {
-  spotOpened = true;
-  res.send('stopped');
-});
-
 // starter route
-app.get('/start', (req, res) => {
-  spotOpened = false;
+app.get('/check', (req, res) => {
   checkCourse(req.query.subj, req.query.num);
   res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
 });
@@ -58,27 +51,29 @@ app.get('/start', (req, res) => {
 const port = process.env.PORT || 9090;
 app.listen(port);
 
-console.log(`listening on: ${port}`);
+console.log(`checker listening on: ${port}`);
 
 // Download the helper library from https://www.twilio.com/docs/node/install
 // Your Account Sid and Auth Token from twilio.com/console
 // DANGER! This is insecure. See http://twil.io/secure
-const { accountSid } = process.env;
-const { authToken } = process.env;
-const client = require('twilio')(accountSid, authToken);
+const { ACCOUNT_SID } = process.env;
+const { AUTH_TOKEN } = process.env;
+console.log(process.env.ACCOUNT_SID);
+const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
-let spotOpened = false;
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
+const ENGINE_URL = 'https://course-alert-engine.herokuapp.com/';
 
 const checkCourse = (subj, crsenum) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
-    if (!isNaN(response.data.substring(8702, 8704)) && !spotOpened) {
+    if (!isNaN(response.data.substring(8702, 8704))) {
       console.log(`${Number(response.data.substring(8702, 8704))} out of 60`);
       if (Number(response.data.substring(8702, 8704)) < 60) {
         console.log('Opening!');
-        console.log(Number(response.data.substring(8702, 8704)));
+        // console.log(Number(response.data.substring(8702, 8704)));
+        axios.post(`${ENGINE_URL}`, { spotOpened: true });
         client.messages
           .create({
             body: `A slot has opened for ${subj} ${crsenum}!`,
@@ -86,23 +81,10 @@ const checkCourse = (subj, crsenum) => {
             to: '+18603017761',
           })
           .then((message) => { return console.log(message.sid); });
-        spotOpened = true;
       }
     }
-    if (!spotOpened) {
-      setTimeout(() => { return checkCourse('COSC', '30'); }, 30000);
-    }
+    axios.post(`${ENGINE_URL}`, { spotOpened: false });
   }).catch((error) => {
     console.log(error.message);
   });
 };
-
-checkCourse('COSC', '30');
-
-client.messages
-  .create({
-    body: 'Server is starting!',
-    from: '+18608502893',
-    to: '+18603017761',
-  })
-  .then((message) => { return console.log(message.sid); });
