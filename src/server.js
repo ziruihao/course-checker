@@ -1,3 +1,5 @@
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-restricted-globals */
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -61,8 +63,8 @@ console.log(`listening on: ${port}`);
 // Download the helper library from https://www.twilio.com/docs/node/install
 // Your Account Sid and Auth Token from twilio.com/console
 // DANGER! This is insecure. See http://twil.io/secure
-const accountSid = process.env.accountSid;
-const authToken = process.env.authToken;
+const { accountSid } = process.env;
+const { authToken } = process.env;
 const client = require('twilio')(accountSid, authToken);
 
 let spotOpened = false;
@@ -70,32 +72,36 @@ let spotOpened = false;
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
 
 const checkCourse = (subj, crsenum) => {
-  axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then(response => {
-    console.log('Checking the timetable...')
+  axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
+    console.log('Checking the timetable...');
     if (!isNaN(response.data.substring(8702, 8704)) && !spotOpened) {
       if (Number(response.data.substring(8702, 8704)) < 60) {
         console.log('Opening!');
         console.log(Number(response.data.substring(8702, 8704)));
         client.messages
-        .create({
-           body: `A slot has opened for ${subj} ${crsenum}!`,
-           from: '+18608502893',
-           to: '+18603017761'
-         })
-        .then(message => console.log(message.sid));
+          .create({
+            body: `A slot has opened for ${subj} ${crsenum}!`,
+            from: '+18608502893',
+            to: '+18603017761',
+          })
+          .then((message) => { return console.log(message.sid); });
         spotOpened = true;
       }
     }
     if (!spotOpened) {
-      setTimeout(() => checkCourse('COSC', '30'), 1000);
+      setTimeout(() => { return checkCourse('COSC', '30'); }, 1000);
     }
-  }).catch(error => {
+  }).catch((error) => {
     console.log(error.message);
   });
-}
+};
 
 checkCourse('COSC', '30');
 
-
-
-
+client.messages
+  .create({
+    body: 'Server is starting!',
+    from: '+18608502893',
+    to: '+18603017761',
+  })
+  .then((message) => { return console.log(message.sid); });
