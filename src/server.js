@@ -41,7 +41,7 @@ app.get('/', (req, res) => {
 });
 
 // starter route
-app.get('/check', (req, res) => {
+app.post('/check', (req, res) => {
   checkCourse(req.query.subj, req.query.num);
   res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
 });
@@ -58,12 +58,11 @@ console.log(`checker listening on: ${port}`);
 // DANGER! This is insecure. See http://twil.io/secure
 const { ACCOUNT_SID } = process.env;
 const { AUTH_TOKEN } = process.env;
-console.log(process.env.ACCOUNT_SID);
 const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
-const ENGINE_URL = 'https://course-alert-engine.herokuapp.com/';
+const ENGINE_URL = 'https://course-alert-engine.herokuapp.com/result';
 
 const checkCourse = (subj, crsenum) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
