@@ -62,16 +62,16 @@ const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
-// const ENGINE_URL = 'http://localhost:7070';
-const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
+const ENGINE_URL = 'http://localhost:7070';
+// const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
 
 const checkCourse = (subj, crsenum, lim) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
-    console.log(response.data.substring(8673, 8675));
-    if (!isNaN(response.data.substring(8673, 8675))) {
-      console.log(`${Number(response.data.substring(8673, 8675))} out of ${lim}`);
-      if (Number(response.data.substring(8673, 8675)) < parseInt(lim, 10)) {
+    console.log(response.data.substring(8677, 8679));
+    if (!isNaN(response.data.substring(8677, 8679))) {
+      console.log(`${Number(response.data.substring(8677, 8679))} out of ${lim}`);
+      if (Number(response.data.substring(8677, 8679)) < parseInt(lim, 10)) {
         console.log('Opening!');
         axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
           console.log(`engine said it ${result.data}`);
