@@ -62,8 +62,8 @@ const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
-const ENGINE_URL = 'http://localhost:7070';
-// const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
+// const ENGINE_URL = 'http://localhost:7070';
+const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
 
 const checkCourse = (subj, crsenum, lim) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
