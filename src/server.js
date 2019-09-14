@@ -84,6 +84,9 @@ const checkCourse = (subj, crsenum, lim) => {
           .then((message) => { return console.log(message.sid); });
       }
     }
+    axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
+      console.log('told engine to keep going');
+    });
   }).catch((error) => {
     console.log(error.message);
   });
