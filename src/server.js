@@ -82,11 +82,12 @@ const checkCourse = (subj, crsenum, lim) => {
             to: '+18603017761',
           })
           .then((message) => { return console.log(message.sid); });
+      } else {
+        axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
+          console.log('told engine to keep going');
+        });
       }
     }
-    axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
-      console.log('told engine to keep going');
-    });
   }).catch((error) => {
     console.log(error.message);
   });
