@@ -68,10 +68,10 @@ const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
 const checkCourse = (subj, crsenum, lim) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
-    console.log(response.data.substring(8677, 8679));
-    if (!isNaN(response.data.substring(8677, 8679))) {
-      console.log(`${Number(response.data.substring(8677, 8679))} out of ${lim}`);
-      if (Number(response.data.substring(8677, 8679)) < parseInt(lim, 10)) {
+    console.log(response.data.substring(8689, 8691));
+    if (!isNaN(response.data.substring(8689, 8691))) {
+      console.log(`${Number(response.data.substring(8689, 8691))} out of ${lim}`);
+      if (Number(response.data.substring(8689, 8691)) < parseInt(lim, 10)) {
         console.log('Opening!');
         axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
           console.log(`engine said it ${result.data}`);
