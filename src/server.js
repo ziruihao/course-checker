@@ -43,7 +43,7 @@ app.get('/', (req, res) => {
 
 // starter route
 app.post('/check', (req, res) => {
-  checkCourse(req.query.subj, req.query.num, req.query.lim);
+  checkCourse(req.query.subj, req.query.num, req.query.lim, req.query.crn);
   res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
 });
 
@@ -65,7 +65,7 @@ const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
 const ENGINE_URL = process.env.mode === 'development' ? 'http://localhost:7070' : 'https://course-alert-engine.herokuapp.com';
 
-const checkCourse = (subj, crsenum, lim) => {
+const checkCourse = (subj, crsenum, lim, crn) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
 
@@ -82,7 +82,7 @@ const checkCourse = (subj, crsenum, lim) => {
       });
       client.messages
         .create({
-          body: `A slot has opened for ${subj} ${crsenum}!`,
+          body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
           from: '+18608502893',
           to: '+18603017761',
         })
