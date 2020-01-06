@@ -43,8 +43,13 @@ app.get('/', (req, res) => {
 
 // starter route
 app.post('/check', (req, res) => {
-  checkCourse(req.query.subj, req.query.num, req.query.lim, req.query.crn);
-  res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
+  coursesToCheck.append({
+    subj: req.query.subj, num: req.query.num, lim: req.query.lim, crn: req.query.crn,
+  });
+  checkAllCourses(req.query.subj, req.query.num, req.query.lim, req.query.crn).then(() => {
+    res.send('Check complete');
+    // res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
+  }).catch((e) => { res.send('Check error'); });
 });
 
 // START THE SERVER
@@ -54,6 +59,8 @@ app.listen(port);
 
 console.log(`checker listening on: ${port}`);
 
+const coursesToCheck = [];
+
 // Download the helper library from https://www.twilio.com/docs/node/install
 // Your Account Sid and Auth Token from twilio.com/console
 // DANGER! This is insecure. See http://twil.io/secure
@@ -61,38 +68,50 @@ const { ACCOUNT_SID } = process.env;
 const { AUTH_TOKEN } = process.env;
 const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
-
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
 const ENGINE_URL = process.env.mode === 'development' ? 'http://localhost:7070' : 'https://course-alert-engine.herokuapp.com';
 
+const checkAllCourses = () => {
+  return new Promise((resolve, reject) => {
+    Promise.all(coursesToCheck.map((course) => {
+      return new Promise((resolve, reject) => {
+        checkCourse(course.subj, course.crsenum, course.lim, course.crn).then(() => { resolve(); }).catch((e) => { reject(e); });
+      });
+    })).then(() => { resolve(); }).catch((e) => { reject(e); });
+  });
+};
+
 const checkCourse = (subj, crsenum, lim, crn) => {
-  axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
-    console.log('Checking the timetable...');
+  return new Promise((resolve, reject) => {
+    console.log(`Starting to check for ${subj} ${crsenum}`);
+    axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
+      const $ = cheerio.load(response.data);
 
-    const $ = cheerio.load(response.data);
+      const enroll = $('tr td:nth-of-type(16)').text();
+      console.log(enroll);
 
-    const enroll = $('tr td:nth-of-type(16)').text();
-    console.log(enroll);
+      if (enroll < parseInt(lim, 10)) {
+        console.log('Opening!');
 
-    if (enroll < parseInt(lim, 10)) {
-      console.log('Opening!');
-
-      axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
-        console.log(`engine said it ${result.data}`);
-      });
-      client.messages
-        .create({
-          body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
-          from: '+18608502893',
-          to: '+18603017761',
-        })
-        .then((message) => { return console.log(message.sid); });
-    } else {
-      axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
-        console.log('told engine to keep going');
-      });
-    }
-  }).catch((error) => {
-    console.log(error.message);
+        axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
+          console.log(`Engine said it ${result.data}`);
+        });
+        client.messages
+          .create({
+            body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
+            from: '+18608502893',
+            to: '+18603017761',
+          })
+          .then((message) => { resolve(); });
+      } else {
+        axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
+          console.log('Told engine to keep going');
+          resolve();
+        });
+      }
+    }).catch((error) => {
+      console.log(error.message);
+      reject();
+    });
   });
 };
