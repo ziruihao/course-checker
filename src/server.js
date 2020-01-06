@@ -6,6 +6,7 @@ import cors from 'cors';
 import path from 'path';
 import morgan from 'morgan';
 import axios from 'axios';
+import cheerio from 'cheerio';
 // import $ from 'jquery';
 import dotenv from 'dotenv';
 
@@ -62,32 +63,34 @@ const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
-// const ENGINE_URL = 'http://localhost:7070';
-const ENGINE_URL = 'https://course-alert-engine.herokuapp.com';
+const ENGINE_URL = process.env.mode === 'development' ? 'http://localhost:7070' : 'https://course-alert-engine.herokuapp.com';
 
 const checkCourse = (subj, crsenum, lim) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
     console.log('Checking the timetable...');
-    console.log(response.data.substring(8689, 8691));
-    if (!isNaN(response.data.substring(8689, 8691))) {
-      console.log(`${Number(response.data.substring(8689, 8691))} out of ${lim}`);
-      if (Number(response.data.substring(8689, 8691)) < parseInt(lim, 10)) {
-        console.log('Opening!');
-        axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
-          console.log(`engine said it ${result.data}`);
-        });
-        client.messages
-          .create({
-            body: `A slot has opened for ${subj} ${crsenum}!`,
-            from: '+18608502893',
-            to: '+18603017761',
-          })
-          .then((message) => { return console.log(message.sid); });
-      } else {
-        axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
-          console.log('told engine to keep going');
-        });
-      }
+
+    const $ = cheerio.load(response.data);
+
+    const enroll = $('tr td:nth-of-type(16)').text();
+    console.log(enroll);
+
+    if (enroll < parseInt(lim, 10)) {
+      console.log('Opening!');
+
+      axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
+        console.log(`engine said it ${result.data}`);
+      });
+      client.messages
+        .create({
+          body: `A slot has opened for ${subj} ${crsenum}!`,
+          from: '+18608502893',
+          to: '+18603017761',
+        })
+        .then((message) => { return console.log(message.sid); });
+    } else {
+      axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
+        console.log('told engine to keep going');
+      });
     }
   }).catch((error) => {
     console.log(error.message);
