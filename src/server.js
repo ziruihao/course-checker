@@ -90,7 +90,7 @@ const checkAllCourses = () => {
         if (!course.spotOpened) {
           checkCourse(course.subj, course.num, course.lim, course.crn).then((opened) => {
             if (opened) { course.spotOpened = true; resolve(); } else { resolve(); }
-          }).catch((e) => { reject(e); });
+          }).catch((e) => { console.log(e); });
         } else { resolve(); }
       });
     })).then(() => {
@@ -130,8 +130,7 @@ const checkCourse = (subj, crsenum, lim, crn) => {
           });
       } else { resolve(false); }
     }).catch((error) => {
-      console.log(error.message);
-      reject();
+      reject(error);
     });
   });
 };
