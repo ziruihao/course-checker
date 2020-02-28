@@ -56,6 +56,7 @@ app.get('/start', (req, res) => {
 
 app.get('/stop', (req, res) => {
   stop = true;
+  coursesToCheck = [];
   res.send('Stopped');
 });
 
@@ -70,7 +71,7 @@ app.listen(port);
 
 console.log(`checker listening on: ${port}`);
 
-const coursesToCheck = [];
+let coursesToCheck = [];
 let stop = false;
 
 // Download the helper library from https://www.twilio.com/docs/node/install
@@ -85,6 +86,7 @@ const SELF_URL = process.env.mode === 'development' ? 'http://localhost:9090' : 
 
 const checkAllCourses = () => {
   return new Promise((resolve, reject) => {
+    console.log(`CHECKING ${coursesToCheck.filter((c) => { return !c.spotOpened; }).length} COURSES`);
     Promise.all(coursesToCheck.map((course) => {
       return new Promise((resolve, reject) => {
         if (!course.spotOpened) {
@@ -95,7 +97,6 @@ const checkAllCourses = () => {
       });
     })).then(() => {
       let allOpened = true;
-      console.log(coursesToCheck);
       coursesToCheck.forEach((course) => {
         if (!course.spotOpened) allOpened = false;
       });
@@ -106,40 +107,34 @@ const checkAllCourses = () => {
 
 const checkCourse = (subj, crsenum, lim, crn) => {
   return new Promise((resolve, reject) => {
-    console.log(`Starting to check for ${subj} ${crsenum}`);
+    // console.log(`Starting to check for ${subj} ${crsenum}`);
     axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
       const $ = cheerio.load(response.data);
 
       const get = $('tr td:nth-of-type(16)').text();
 
-      const enrolls = [];
-
+      let enroll = 1000;
       for (let i = 0; i <= get.length - 2; i += 2) {
-        enrolls.push(get.substring(i, i + 2));
+        if (parseInt(get.substring(i, i + 2), 10) < enroll) { enroll = parseInt(get.substring(i, i + 2), 10); }
       }
 
-      console.log(`checking ${get.length} times`);
+      console.log(`${subj} ${crsenum} has ${enroll} enrolled`);
 
-      enrolls.forEach((enroll) => {
-        console.log(`${subj} ${crsenum} has ${enroll} enrolled`);
+      if (enroll < parseInt(lim, 10)) {
+        console.log('Opening!');
 
-        if (enroll < parseInt(lim, 10)) {
-          console.log('Opening!');
-
-          client.messages
-            .create({
-              body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
-              from: '+18059185020',
-              to: '+18603017761',
-            })
-            .then(() => {
-              console.log(coursesToCheck);
-              resolve(true);
-            }).catch((e) => {
-              console.log(e);
-            });
-        } else { resolve(false); }
-      });
+        client.messages
+          .create({
+            body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
+            from: '+18059185020',
+            to: '+18603017761',
+          })
+          .then(() => {
+            resolve(true);
+          }).catch((e) => {
+            console.log(e);
+          });
+      } else { resolve(false); }
     }).catch((error) => {
       reject(error);
     });
@@ -152,9 +147,9 @@ const start = () => {
       checkAllCourses().then((allOpened) => {
         if (allOpened) {
           stop = true;
-          console.log('All found');
+          console.log('ALL FOUND');
         } else {
-          setTimeout(() => { return start(); }, 5000);
+          setTimeout(() => { return start(); }, 7000);
         }
       });
     }
