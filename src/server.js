@@ -110,25 +110,36 @@ const checkCourse = (subj, crsenum, lim, crn) => {
     axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
       const $ = cheerio.load(response.data);
 
-      const enroll = $('tr td:nth-of-type(16)').text();
-      console.log(`${subj} ${crsenum} has ${enroll} enrolled`);
+      const get = $('tr td:nth-of-type(16)').text();
 
-      if (enroll < parseInt(lim, 10)) {
-        console.log('Opening!');
+      const enrolls = [];
 
-        client.messages
-          .create({
-            body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
-            from: '+18059185020',
-            to: '+18603017761',
-          })
-          .then((message) => {
-            console.log(coursesToCheck);
-            resolve(true);
-          }).catch((e) => {
-            console.log(e);
-          });
-      } else { resolve(false); }
+      for (let i = 0; i <= get.length - 2; i += 2) {
+        enrolls.push(get.substring(i, i + 2));
+      }
+
+      console.log(`checking ${get.length} times`);
+
+      enrolls.forEach((enroll) => {
+        console.log(`${subj} ${crsenum} has ${enroll} enrolled`);
+
+        if (enroll < parseInt(lim, 10)) {
+          console.log('Opening!');
+
+          client.messages
+            .create({
+              body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
+              from: '+18059185020',
+              to: '+18603017761',
+            })
+            .then(() => {
+              console.log(coursesToCheck);
+              resolve(true);
+            }).catch((e) => {
+              console.log(e);
+            });
+        } else { resolve(false); }
+      });
     }).catch((error) => {
       reject(error);
     });
@@ -143,7 +154,7 @@ const start = () => {
           stop = true;
           console.log('All found');
         } else {
-          setTimeout(() => { return start(); }, 20000);
+          setTimeout(() => { return start(); }, 5000);
         }
       });
     }
