@@ -41,15 +41,27 @@ app.get('/', (req, res) => {
   res.send('hi');
 });
 
-// starter route
 app.post('/check', (req, res) => {
-  coursesToCheck.append({
-    subj: req.query.subj, num: req.query.num, lim: req.query.lim, crn: req.query.crn,
+  coursesToCheck.push({
+    subj: req.query.subj, num: req.query.num, lim: req.query.lim, crn: req.query.crn, spotOpened: false,
   });
-  checkAllCourses(req.query.subj, req.query.num, req.query.lim, req.query.crn).then(() => {
-    res.send('Check complete');
-    // res.send(`starting to check for ${req.query.subj} ${req.query.num}`);
-  }).catch((e) => { res.send('Check error'); });
+  res.send(coursesToCheck);
+});
+
+app.get('/start', (req, res) => {
+  stop = false;
+  start();
+  res.send('Started');
+});
+
+app.get('/stop', (req, res) => {
+  stop = true;
+  coursesToCheck = [];
+  res.send('Stopped');
+});
+
+app.post('/refresh', (req, res) => {
+  res.send('Refreshed');
 });
 
 // START THE SERVER
@@ -59,7 +71,8 @@ app.listen(port);
 
 console.log(`checker listening on: ${port}`);
 
-const coursesToCheck = [];
+let coursesToCheck = [];
+let stop = false;
 
 // Download the helper library from https://www.twilio.com/docs/node/install
 // Your Account Sid and Auth Token from twilio.com/console
@@ -69,49 +82,76 @@ const { AUTH_TOKEN } = process.env;
 const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
-const ENGINE_URL = process.env.mode === 'development' ? 'http://localhost:7070' : 'https://course-alert-engine.herokuapp.com';
+const SELF_URL = process.env.mode === 'development' ? 'http://localhost:9090' : 'https://course-alert-checker.herokuapp.com';
 
 const checkAllCourses = () => {
   return new Promise((resolve, reject) => {
+    console.log(`CHECKING ${coursesToCheck.filter((c) => { return !c.spotOpened; }).length} COURSES`);
     Promise.all(coursesToCheck.map((course) => {
       return new Promise((resolve, reject) => {
-        checkCourse(course.subj, course.crsenum, course.lim, course.crn).then(() => { resolve(); }).catch((e) => { reject(e); });
+        if (!course.spotOpened) {
+          checkCourse(course.subj, course.num, course.lim, course.crn).then((opened) => {
+            if (opened) { course.spotOpened = true; resolve(); } else { resolve(); }
+          }).catch((e) => { console.log(e); });
+        } else { resolve(); }
       });
-    })).then(() => { resolve(); }).catch((e) => { reject(e); });
+    })).then(() => {
+      let allOpened = true;
+      coursesToCheck.forEach((course) => {
+        if (!course.spotOpened) allOpened = false;
+      });
+      resolve(allOpened);
+    }).catch((e) => { reject(e); });
   });
 };
 
 const checkCourse = (subj, crsenum, lim, crn) => {
   return new Promise((resolve, reject) => {
-    console.log(`Starting to check for ${subj} ${crsenum}`);
+    // console.log(`Starting to check for ${subj} ${crsenum}`);
     axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${crsenum}`).then((response) => {
       const $ = cheerio.load(response.data);
 
-      const enroll = $('tr td:nth-of-type(16)').text();
-      console.log(enroll);
+      const get = $('tr td:nth-of-type(16)').text();
+
+      let enroll = 1000;
+      for (let i = 0; i <= get.length - 2; i += 2) {
+        if (parseInt(get.substring(i, i + 2), 10) < enroll) { enroll = parseInt(get.substring(i, i + 2), 10); }
+      }
+
+      console.log(`${subj} ${crsenum} has ${enroll} enrolled`);
 
       if (enroll < parseInt(lim, 10)) {
         console.log('Opening!');
 
-        axios.post(`${ENGINE_URL}/result`, { spotOpened: true }).then((result) => {
-          console.log(`Engine said it ${result.data}`);
-        });
         client.messages
           .create({
             body: `A slot has opened for ${subj} ${crsenum}, CRN is ${crn}!`,
-            from: '+18608502893',
+            from: '+18059185020',
             to: '+18603017761',
           })
-          .then((message) => { resolve(); });
-      } else {
-        axios.post(`${ENGINE_URL}/result`, { spotOpened: false }).then(() => {
-          console.log('Told engine to keep going');
-          resolve();
-        });
-      }
+          .then(() => {
+            resolve(true);
+          }).catch((e) => {
+            console.log(e);
+          });
+      } else { resolve(false); }
     }).catch((error) => {
-      console.log(error.message);
-      reject();
+      reject(error);
     });
+  });
+};
+
+const start = () => {
+  axios.post(`${SELF_URL}/refresh`).then(() => {
+    if (!stop) {
+      checkAllCourses().then((allOpened) => {
+        if (allOpened) {
+          stop = true;
+          console.log('ALL FOUND');
+        } else {
+          setTimeout(() => { return start(); }, 7000);
+        }
+      });
+    }
   });
 };
