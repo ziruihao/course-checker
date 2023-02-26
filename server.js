@@ -87,7 +87,7 @@ const checkCourse = (subj, num, lim, crn) => new Promise((resolve, reject) => {
       if (parseInt(get.substring(i, i + 2), 10) < enroll) { enroll = parseInt(get.substring(i, i + 2), 10); }
     }
 
-    console.log(`\t${subj} ${num}: ${enroll}/${lim} enrolled`);
+    console.log(`\t${subj} ${num}: ${enroll}/${lim} enrolled.`);
 
     if (enroll < parseInt(lim, 10)) {
 
@@ -110,7 +110,7 @@ const checkCourse = (subj, num, lim, crn) => new Promise((resolve, reject) => {
 });
 
 cron.schedule('*/60 * * * * *', () => {
-  console.log('\nChecking for courses');
+  console.log('\nChecking for courses.');
   const courses = db.prepare('SELECT * FROM courses WHERE spotOpened = false').all();
   courses.forEach(course => {
     checkCourse(course.subj, course.num, course.lim, course.crn).then((spotOpened) => {
@@ -124,3 +124,11 @@ cron.schedule('*/60 * * * * *', () => {
     }).catch(e => console.log(e));
   });
 });
+
+cron.schedule('0 0 0 * * *', () => client.messages
+  .create({
+    body: 'Bot still running :)',
+    from: '+18445450303',
+    to: '+18603017761',
+  })
+);

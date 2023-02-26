@@ -1,9 +1,9 @@
 {
-  "name": "example_express_with_es6",
-  "version": "3.0.0",
+  "name": "course-checker",
+  "version": "1.0.0",
   "description": "",
   "author": "",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js --exec babel-node",
     "start": "babel-node server.js",
