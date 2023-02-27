@@ -36,7 +36,7 @@ try {
   console.log(e);
 }
 
-db.prepare('CREATE TABLE IF NOT EXISTS courses (subj TEXT, num TEXT, lim TEXT, crn TEXT, spotOpened BOOLEAN DEFAULT FALSE)').run();
+db.prepare('CREATE TABLE IF NOT EXISTS courses (subj TEXT, num TEXT, lim TEXT, crn TEXT, phoneNum TEXT, spotOpened BOOLEAN DEFAULT FALSE)').run();
 
 // default index route
 app.get('/', (req, res) => {
@@ -50,7 +50,7 @@ app.get('/', (req, res) => {
 app.get('/check', (req, res) => {
   try {
     if (typeof db.prepare('SELECT * FROM courses WHERE crn = ?').get(req.query.crn) == 'undefined') {
-      db.prepare('INSERT INTO courses (subj, num, lim, crn) VALUES (?, ?, ?, ?)').run(req.query.subj, req.query.num, req.query.lim, req.query.crn);
+      db.prepare('INSERT INTO courses (subj, num, lim, crn, phoneNum) VALUES (?, ?, ?, ?, ?)').run(req.query.subj, req.query.num, req.query.lim, req.query.crn, typeof req.query.phoneNum == 'undefined' ? '+18603017761' : req.query.phoneNum);
     }
     res.json(db.prepare('SELECT * FROM courses').all());
   } catch (e) {
@@ -76,7 +76,7 @@ const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
 
 const TIMETABLE_URL = 'https://oracle-www.dartmouth.edu/dart/groucho/timetable.course_quicksearch';
 
-const checkCourse = (subj, num, lim, crn) => new Promise((resolve, reject) => {
+const checkCourse = (subj, num, lim, crn, phoneNum) => new Promise((resolve, reject) => {
   axios.post(`${TIMETABLE_URL}?classyear=2008&subj=${subj}&crsenum=${num}`).then((response) => {
     const $ = cheerio.load(response.data);
 
@@ -95,7 +95,7 @@ const checkCourse = (subj, num, lim, crn) => new Promise((resolve, reject) => {
         .create({
           body: `A slot has opened for ${subj} ${num}, CRN is ${crn}!`,
           from: '+18445450303',
-          to: '+18603017761',
+          to: phoneNum,
         })
         .then(() => {
           resolve(true);
@@ -113,7 +113,7 @@ cron.schedule('*/60 * * * * *', () => {
   console.log('\nChecking for courses.');
   const courses = db.prepare('SELECT * FROM courses WHERE spotOpened = false').all();
   courses.forEach(course => {
-    checkCourse(course.subj, course.num, course.lim, course.crn).then((spotOpened) => {
+    checkCourse(course.subj, course.num, course.lim, course.crn, course.phoneNum).then((spotOpened) => {
       if (spotOpened) {
         try {
           db.prepare('UPDATE courses SET spotOpened = true WHERE crn = ?').run(course.crn);
