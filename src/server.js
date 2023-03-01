@@ -51,6 +51,8 @@ app.get('/check', (req, res) => {
   try {
     if (typeof db.prepare('SELECT * FROM courses WHERE crn = ?').get(req.query.crn) == 'undefined') {
       db.prepare('INSERT INTO courses (subj, num, lim, crn, phoneNum) VALUES (?, ?, ?, ?, ?)').run(req.query.subj, req.query.num, req.query.lim, req.query.crn, typeof req.query.phoneNum == 'undefined' ? '+18603017761' : req.query.phoneNum);
+    } else {
+      db.prepare('UPDATE courses SET spotOpened = false WHERE crn = ?'.run(req.query.crn))
     }
     res.json(db.prepare('SELECT * FROM courses').all());
   } catch (e) {
