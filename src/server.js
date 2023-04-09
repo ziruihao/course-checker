@@ -38,7 +38,7 @@ try {
 }
 
 db.prepare('CREATE TABLE IF NOT EXISTS courses (subj TEXT, num TEXT, lim TEXT, crn TEXT, phoneNum TEXT, spotOpened BOOLEAN DEFAULT FALSE)').run();
-db.prepare('CREATE TABLE IF NOT EXISTS messages (sessionId TEXT, role TEXT, content TEXT, pos INTEGER)').run();
+db.prepare('CREATE TABLE IF NOT EXISTS messages (session TEXT, role TEXT, content TEXT, pos INTEGER)').run();
 
 // default index route
 app.get('/', (req, res) => {
@@ -76,15 +76,13 @@ const formatMessage = (message, succint = false) => `${message}?${succint ? ' Bu
 
 app.post('/', (req, res) => {
   try {
-    const { sessionId } = req.headers;
-    console.log('sessionId:', sessionId);
+    const { session } = req.headers;
+    console.log('session:', session);
     const content = formatMessage(req.body.message);
-    console.log('message:', content)
-    const prevMessages = [];
-    prevMessages.concat(db.prepare('SELECT role, content FROM messages WHERE sessionId = ? ORDER BY pos ASC').get(sessionId));
+    console.log('message:', content);
+    const prevMessages = db.prepare('SELECT role, content FROM messages WHERE session = ? ORDER BY pos ASC').all(session);
     console.log('prevMessages:', prevMessages);
-    const maxPos = db.prepare('SELECT MAX(pos) FROM messages WHERE sessionId = ?').get(sessionId)['MAX(pos)'] ?? 0;
-    console.log(maxPos);
+    const maxPos = db.prepare('SELECT MAX(pos) FROM messages WHERE session = ?').get(session)['MAX(pos)'] ?? 0;
     const data = {
       model: 'gpt-3.5-turbo',
       messages: prevMessages.concat([{
@@ -97,14 +95,14 @@ app.post('/', (req, res) => {
       'Authorization': `Bearer ${process.env.OPENAI_SEC_KEY}`
     } })
       .then(response => {
-        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(sessionId, 'user', content, maxPos + 1);
+        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(session, 'user', content, maxPos + 1);
         const { choices } = response.data;
         if (choices.length != 1) {
           console.log('choices:', choices.length);
         }
-        console.log('response:', response.data);
+        response.data.choices.forEach(choice => console.log('\t', JSON.stringify(choice)));
         const reply = choices[0].message.content;
-        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(sessionId, 'assistant', reply, maxPos + 2);
+        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(session, 'assistant', reply, maxPos + 2);
         res.send(reply);
       })
       .catch(error => {
@@ -159,26 +157,26 @@ const checkCourse = (subj, num, lim, crn, phoneNum) => new Promise((resolve, rej
   }).catch(e => reject(e));
 });
 
-cron.schedule('*/60 * * * * *', () => {
-  console.log('\nChecking for courses.');
-  const courses = db.prepare('SELECT * FROM courses WHERE spotOpened = false').all();
-  courses.forEach(course => {
-    checkCourse(course.subj, course.num, course.lim, course.crn, course.phoneNum).then((spotOpened) => {
-      if (spotOpened) {
-        try {
-          db.prepare('UPDATE courses SET spotOpened = true WHERE crn = ?').run(course.crn);
-        } catch (e) {
-          console.log(e);
-        }
-      }
-    }).catch(e => console.log(e));
-  });
-});
+// cron.schedule('*/60 * * * * *', () => {
+//   console.log('\nChecking for courses.');
+//   const courses = db.prepare('SELECT * FROM courses WHERE spotOpened = false').all();
+//   courses.forEach(course => {
+//     checkCourse(course.subj, course.num, course.lim, course.crn, course.phoneNum).then((spotOpened) => {
+//       if (spotOpened) {
+//         try {
+//           db.prepare('UPDATE courses SET spotOpened = true WHERE crn = ?').run(course.crn);
+//         } catch (e) {
+//           console.log(e);
+//         }
+//       }
+//     }).catch(e => console.log(e));
+//   });
+// });
 
-cron.schedule('0 0 0 * * *', () => client.messages
-  .create({
-    body: 'Bot still running :)',
-    from: '+18445450303',
-    to: '+18603017761',
-  })
-);
+// cron.schedule('0 0 0 * * *', () => client.messages
+//   .create({
+//     body: 'Bot still running :)',
+//     from: '+18445450303',
+//     to: '+18603017761',
+//   })
+// );
