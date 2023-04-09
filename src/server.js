@@ -11,6 +11,7 @@ import cheerio from 'cheerio';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import cron from 'node-cron';
+import Axios from 'axios';
 
 dotenv.config({ silent: true });
 
@@ -37,6 +38,7 @@ try {
 }
 
 db.prepare('CREATE TABLE IF NOT EXISTS courses (subj TEXT, num TEXT, lim TEXT, crn TEXT, phoneNum TEXT, spotOpened BOOLEAN DEFAULT FALSE)').run();
+db.prepare('CREATE TABLE IF NOT EXISTS messages (sessionId TEXT, role TEXT, content TEXT, pos INTEGER)').run();
 
 // default index route
 app.get('/', (req, res) => {
@@ -52,7 +54,8 @@ app.get('/check', (req, res) => {
     if (typeof db.prepare('SELECT * FROM courses WHERE crn = ?').get(req.query.crn) == 'undefined') {
       db.prepare('INSERT INTO courses (subj, num, lim, crn, phoneNum) VALUES (?, ?, ?, ?, ?)').run(req.query.subj, req.query.num, req.query.lim, req.query.crn, typeof req.query.phoneNum == 'undefined' ? '+18603017761' : req.query.phoneNum);
     } else {
-      db.prepare('UPDATE courses SET spotOpened = false WHERE crn = ?'.run(req.query.crn))
+      console.log('Course already exists, updating.')
+      db.prepare('UPDATE courses SET spotOpened = false WHERE crn = ?').run(req.query.crn)
     }
     res.json(db.prepare('SELECT * FROM courses').all());
   } catch (e) {
@@ -65,6 +68,51 @@ app.get('/stop', (req, res) => {
     db.prepare('DELETE FROM courses').run();
     res.send('Stopped');
   } catch (e) {
+    res.status(500).send(e.messages);
+  }
+});
+
+const formatMessage = (message, succint = false) => `${message}?${succint ? ' But give me a quick response as if we are in a short conversation.' : ''}`;
+
+app.post('/', (req, res) => {
+  try {
+    const { sessionId } = req.headers;
+    console.log('sessionId:', sessionId);
+    const content = formatMessage(req.body.message);
+    console.log('message:', content)
+    const prevMessages = [];
+    prevMessages.concat(db.prepare('SELECT role, content FROM messages WHERE sessionId = ? ORDER BY pos ASC').get(sessionId));
+    console.log('prevMessages:', prevMessages);
+    const maxPos = db.prepare('SELECT MAX(pos) FROM messages WHERE sessionId = ?').get(sessionId)['MAX(pos)'] ?? 0;
+    console.log(maxPos);
+    const data = {
+      model: 'gpt-3.5-turbo',
+      messages: prevMessages.concat([{
+        role: 'user',
+        content,
+      }])
+    };
+    Axios.post('https://api.openai.com/v1/chat/completions', data, { headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENAI_SEC_KEY}`
+    } })
+      .then(response => {
+        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(sessionId, 'user', content, maxPos + 1);
+        const { choices } = response.data;
+        if (choices.length != 1) {
+          console.log('choices:', choices.length);
+        }
+        console.log('response:', response.data);
+        const reply = choices[0].message.content;
+        db.prepare('INSERT INTO messages VALUES (?, ?, ?, ?)').run(sessionId, 'assistant', reply, maxPos + 2);
+        res.send(reply);
+      })
+      .catch(error => {
+        console.error(error.message);
+        res.send("Sorry, please try that again.");
+      });
+  } catch (e) {
+    console.error(e.message);
     res.status(500).send(e.messages);
   }
 });

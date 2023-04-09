@@ -17,9 +17,7 @@
     "yarn": "^1.6.0"
   },
   "dependencies": {
-    "axios": "^0.18.0",
-    "babel-cli": "^6.26.0",
-    "babel-preset-env": "^1.7.0",
+    "axios": "^0.18.1",
     "better-sqlite3": "^8.1.0",
     "body-parser": "^1.19.0",
     "cheerio": "^1.0.0-rc.3",
@@ -34,6 +32,9 @@
     "twilio": "^3.31.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.21.0",
+    "@babel/core": "^7.21.4",
+    "@babel/preset-env": "^7.21.4",
     "babel-eslint": "^10.0.1",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-plugin-import": "^2.17.2",
